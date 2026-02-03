@@ -58,8 +58,24 @@ pipeline {
                 
                 // startup Selenium Grid
                 sh '''
-                    # Start Selenium Grid for Selenium test execution
-                    docker run -d --rm -p 4444:4444 -p 7900:7900 --network=demo-net --shm-size "2g" --name selenium-grid selenium/standalone-chrome:latest
+                    # Start Selenium Hub
+                    docker run -d --rm -p 4444:4444 --network=demo-net --name selenium-hub selenium/hub:latest
+                    
+                    # Start Chrome Node 1
+                    docker run -d --rm --network=demo-net --shm-size "1g" \
+                      -e SE_EVENT_BUS_HOST=selenium-hub \
+                      -e SE_EVENT_BUS_PUBLISH_PORT=4442 \
+                      -e SE_EVENT_BUS_SUBSCRIBE_PORT=4443 \
+                      -e SE_OPTS='--driver-configuration stereotype={"browserName":"chrome","node-id":"node-1"}' \
+                      --name selenium-node-chrome-1 selenium/node-chrome:latest
+                    
+                    # Start Chrome Node 2
+                    docker run -d --rm --network=demo-net --shm-size "1g" \
+                      -e SE_EVENT_BUS_HOST=selenium-hub \
+                      -e SE_EVENT_BUS_PUBLISH_PORT=4442 \
+                      -e SE_EVENT_BUS_SUBSCRIBE_PORT=4443 \
+                      -e SE_OPTS='--driver-configuration stereotype={"browserName":"chrome","node-id":"node-2"}' \
+                      --name selenium-node-chrome-2 selenium/node-chrome:latest
                     '''
 
                 // set up Parasoft License
@@ -82,7 +98,6 @@ pipeline {
                     dtp.password=${DTP_PASS}
                     
                     report.scontrol=min
-                    report.coverage.line.hashes=true
                     report.dtp.publish=true
                     
                     console.verbosity.level=high
@@ -252,7 +267,7 @@ pipeline {
 
         // Clean after build
         always {
-            sh 'docker container stop selenium-grid'
+            sh 'docker container stop selenium-hub selenium-node-chrome-1 selenium-node-chrome-2'
             sh 'docker container prune -f'
             sh 'docker image prune -f'
             

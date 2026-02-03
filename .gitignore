@@ -31,4 +31,5 @@ notes.txt
 spring-petclinic-selenium-tests-simple/
 jtest/dependency-check-pack-2023.1.0-20230523.zip
 jtest/monitor.env
+spring-petclinic-selenium-tests/.gitignore
 plans

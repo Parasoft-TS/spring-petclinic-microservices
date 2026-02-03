@@ -81,7 +81,7 @@ pipeline {
                 // copy jars
                 script {
                     for (service in ARRAY) {
-                        sh "cp jtest_agent/agent.jar ${service}/src/test/resources/coverage/agent.jar"
+                        sh "cp jtest_agent/*.jar ${service}/src/test/resources/coverage/."
                     }
                 }
 

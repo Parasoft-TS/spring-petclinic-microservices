@@ -38,6 +38,35 @@ public class ParasoftWatcher implements BeforeEachCallback, TestWatcher  {
 	@Override
 	public void beforeEach(ExtensionContext context) throws Exception {
 		String testId = getTestId(context);
+		
+		// Retrieve the WebDriver from the test instance and initialize header injection
+		org.openqa.selenium.remote.RemoteWebDriver driver = null;
+		Object testInstance = context.getTestInstance().orElse(null);
+		if (testInstance != null) {
+			try {
+				// Use reflection to get the 'driver' field from test class
+				var driverField = testInstance.getClass().getDeclaredField("driver");
+				driverField.setAccessible(true);
+				driver = (org.openqa.selenium.remote.RemoteWebDriver) driverField.get(testInstance);
+			} catch (NoSuchFieldException e) {
+				System.out.println("Warning: Could not retrieve driver field for node assignment");
+			}
+		}
+		
+		// Initialize header injection if driver is available
+		if (driver != null) {
+			try {
+				String gridUrl = System.getProperty("gridUrl", "http://localhost:4444/wd/hub");
+				String nodeId = GridNodeHelper.getAssignedNodeName(driver, gridUrl);
+				GridNodeHelper.initializeHeaderInjection(driver, nodeId);
+				System.out.println("Assigned to node: " + nodeId);
+			} catch (Exception e) {
+				System.out.println("Could not determine node ID: " + e.getMessage());
+				// Continue gracefully if node ID retrieval fails
+			}
+		}
+		
+		// Existing CTP test tracking code
 		Response response = RestAssured.given().relaxedHTTPSValidation().contentType(ContentType.JSON).body("{\"test\":\"" + testId + "\"}").post("em/api/v3/environments/" + ENV_ID + "/agents/test/start");
 		System.out.println("Response Status Code: " + response.getStatusCode());
         System.out.println("Response Payload: " + response.getBody().asString());

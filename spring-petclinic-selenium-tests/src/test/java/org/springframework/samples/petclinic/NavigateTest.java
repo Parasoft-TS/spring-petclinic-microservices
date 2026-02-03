@@ -33,6 +33,7 @@ public class NavigateTest {
         // Add any additional Chrome arguments or preferences if needed
         // options.addArguments("--headless");
         options.addArguments("--remote-allow-origins=*");
+        options.setCapability("webSocketUrl", true);
 
         // Create a RemoteWebDriver instance with ChromeOptions and grid URL
         URL url = new URL(gridUrl);
