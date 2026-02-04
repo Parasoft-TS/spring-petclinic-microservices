@@ -38,59 +38,74 @@ public class ParasoftWatcher implements BeforeEachCallback, TestWatcher  {
 	@Override
 	public void beforeEach(ExtensionContext context) throws Exception {
 		String testId = getTestId(context);
+		System.out.println("[ParasoftWatcher] Starting test setup for: " + testId);
 		
 		// Retrieve the WebDriver from the test instance and initialize header injection
 		org.openqa.selenium.remote.RemoteWebDriver driver = null;
 		Object testInstance = context.getTestInstance().orElse(null);
 		if (testInstance != null) {
+			System.out.println("[ParasoftWatcher] Test instance found: " + testInstance.getClass().getSimpleName());
 			try {
 				// Use reflection to get the 'driver' field from test class
 				var driverField = testInstance.getClass().getDeclaredField("driver");
 				driverField.setAccessible(true);
 				driver = (org.openqa.selenium.remote.RemoteWebDriver) driverField.get(testInstance);
+				System.out.println("[ParasoftWatcher] WebDriver instance retrieved successfully");
 			} catch (NoSuchFieldException e) {
-				System.out.println("Warning: Could not retrieve driver field for node assignment");
+				System.out.println("[ParasoftWatcher] Warning: Could not retrieve driver field for node assignment - " + e.getMessage());
 			}
+		} else {
+			System.out.println("[ParasoftWatcher] Warning: No test instance available");
 		}
 		
 		// Initialize header injection if driver is available
 		if (driver != null) {
+			System.out.println("[ParasoftWatcher] Driver is available, attempting to retrieve node assignment");
 			try {
 				String gridUrl = System.getProperty("gridUrl", "http://localhost:4444/wd/hub");
+				System.out.println("[ParasoftWatcher] Grid URL from system property: " + gridUrl);
 				String nodeId = GridNodeHelper.getAssignedNodeName(driver, gridUrl);
 				GridNodeHelper.initializeHeaderInjection(driver, nodeId);
-				System.out.println("Assigned to node: " + nodeId);
+				System.out.println("[ParasoftWatcher] Successfully assigned to node: " + nodeId);
 			} catch (Exception e) {
-				System.out.println("Could not determine node ID: " + e.getMessage());
+				System.out.println("[ParasoftWatcher] ERROR: Could not determine node ID: " + e.getMessage());
+				e.printStackTrace();
 				// Continue gracefully if node ID retrieval fails
 			}
+		} else {
+			System.out.println("[ParasoftWatcher] Warning: Driver is null, skipping header injection");
 		}
 		
 		// Existing CTP test tracking code
+		System.out.println("[ParasoftWatcher] Sending test start request to CTP for: " + testId);
 		Response response = RestAssured.given().relaxedHTTPSValidation().contentType(ContentType.JSON).body("{\"test\":\"" + testId + "\"}").post("em/api/v3/environments/" + ENV_ID + "/agents/test/start");
-		System.out.println("Response Status Code: " + response.getStatusCode());
-        System.out.println("Response Payload: " + response.getBody().asString());
+		System.out.println("[ParasoftWatcher] CTP Response Status Code: " + response.getStatusCode());
+        System.out.println("[ParasoftWatcher] CTP Response Payload: " + response.getBody().asString());
     
 	}
 
 	@Override
 	public void testSuccessful(ExtensionContext context) {
 		String testId = getTestId(context);
+		System.out.println("[ParasoftWatcher] Test passed: " + testId);
 		StringBuilder bodyBuilder = new StringBuilder();
 		bodyBuilder.append('{');
 		bodyBuilder.append("\"test\":\"" + testId + "\"");
 		bodyBuilder.append(',');
 		bodyBuilder.append("\"result\":\"PASS\"");
 		bodyBuilder.append('}');
+		System.out.println("[ParasoftWatcher] Sending test stop request (PASS) to CTP");
 		Response response = RestAssured.given().relaxedHTTPSValidation().contentType(ContentType.JSON).body(bodyBuilder.toString()).post("em/api/v3/environments/" + ENV_ID + "/agents/test/stop");
-		System.out.println("Response Status Code: " + response.getStatusCode());
-        System.out.println("Response Payload: " + response.getBody().asString());
+		System.out.println("[ParasoftWatcher] CTP Response Status Code: " + response.getStatusCode());
+        System.out.println("[ParasoftWatcher] CTP Response Payload: " + response.getBody().asString());
     }
 	
 
 	@Override
 	public void testFailed(ExtensionContext context, Throwable cause) {
 		String testId = getTestId(context);
+		System.out.println("[ParasoftWatcher] Test failed: " + testId);
+		System.out.println("[ParasoftWatcher] Failure cause: " + cause.getMessage());
 		StringBuilder bodyBuilder = new StringBuilder();
 		bodyBuilder.append('{');
 		bodyBuilder.append("\"test\":\"" + testId + "\"");
@@ -99,9 +114,10 @@ public class ParasoftWatcher implements BeforeEachCallback, TestWatcher  {
 		bodyBuilder.append(',');
 		bodyBuilder.append("\"message\":\"" + cause.getMessage() + "\"");
 		bodyBuilder.append('}');
+		System.out.println("[ParasoftWatcher] Sending test stop request (FAIL) to CTP");
 		Response response = RestAssured.given().relaxedHTTPSValidation().contentType(ContentType.JSON).body(bodyBuilder.toString()).post("em/api/v3/environments/" + ENV_ID + "/agents/test/stop");
-		System.out.println("Response Status Code: " + response.getStatusCode());
-        System.out.println("Response Payload: " + response.getBody().asString());
+		System.out.println("[ParasoftWatcher] CTP Response Status Code: " + response.getStatusCode());
+        System.out.println("[ParasoftWatcher] CTP Response Payload: " + response.getBody().asString());
     
 	}
 
