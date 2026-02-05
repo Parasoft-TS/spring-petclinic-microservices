@@ -44,7 +44,7 @@ pipeline {
                 cleanWs()
                 // Checkout project
                 checkout([$class: 'GitSCM', 
-                    branches: [[name: 'master']], 
+                    branches: [[name: 'multi-user']], 
                     userRemoteConfigs: [[url: 'https://github.com/Parasoft-TS/spring-petclinic-microservices.git']]])
                 
                 // set GID
